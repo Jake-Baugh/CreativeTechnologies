@@ -165,7 +165,7 @@ private:
 	
 	bool movePointlight;
 
-	XMFLOAT4 m_lightPosition;
+	float m_lightPositionY;
 	XMFLOAT4 m_lightAmbient;
 	XMFLOAT4 m_lightDiffuse;
 	XMFLOAT4 m_lightSpecular;
