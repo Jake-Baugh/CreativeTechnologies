@@ -39,13 +39,15 @@ HRESULT Application::Initialize( Direct3D* direct3D, Timer* timer)
 	//	Set up each pointlight through constructor
 	//------------------------------------------------
 
+	m_lightAmbient = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
+	m_lightDiffuse = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+	m_lightSpecular = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+	m_lightAttenuation = XMFLOAT4(0.0f, 1.0f, 0.0f, 10.0f);
+
 	for(int i = 0; i < 10; i++)
-		m_pointLights[i] = PointLight(
-		XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f),
-		XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f),
-		XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f),
-		XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f),
-		XMFLOAT4(0.0f, 1.0f, 0.0f, 10.0f));
+	{
+		m_pointLights[i] = PointLight(XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f), m_lightAmbient, m_lightDiffuse, m_lightSpecular, m_lightAttenuation);
+	}
 
 	m_compute = new Compute(m_direct3D->GetDevice(), m_direct3D->GetDeviceContext());
 	m_modelLoader = new ObjLoader(m_compute, m_direct3D->GetDevice());
@@ -169,10 +171,13 @@ HRESULT Application::Update( float dt )
 	// Distribute each point light around the scene 
 	//----------------------------------------------
 
-	for(int i = 0; i < 10; i++)
+	if (movePointlight)
 	{
-		m_pointLights[i].position = XMFLOAT4(sin(XM_PI * m_ftimer / lightSpeed *(i+1)) * 2.0f, 0.0f, cos(XM_PI * m_ftimer / lightSpeed *(i+1)) * 2.0f, 4.0f);
-		//m_pointLights[1].pos = XMFLOAT4(3.0f, 0.0f, cos(XM_PI*3.0f), 4.0f);
+		for(int i = 0; i < 10; i++)
+		{
+			m_pointLights[i].position = XMFLOAT4(sin(XM_PI * m_ftimer / lightSpeed )*(i+1) * 2.0f, 1.0f, cos(XM_PI * m_ftimer / lightSpeed )*(i+1) * 2.0f, 4.0f);
+			//m_pointLights[1].pos = XMFLOAT4(3.0f, 0.0f, cos(XM_PI*3.0f), 4.0f);
+		}
 	}
 
 	//-----------------------------
@@ -185,8 +190,15 @@ HRESULT Application::Update( float dt )
 	//	Update the light buffer for each in array
 	//------------------------------------------------
 
-	UpdateBuffer(m_lightBuffer, &m_pointLights[0], (sizeof(PointLight) * 10));
+	for (int i = 0; i < 10; i++)
+	{
+		m_pointLights[i].ambient = m_lightAmbient;
+		m_pointLights[i].diffuse = m_lightDiffuse;
+		m_pointLights[i].specular = m_lightSpecular;
+		m_pointLights[i].attenuation = m_lightAttenuation;
+	}
 
+	UpdateBuffer(m_lightBuffer, &m_pointLights[0], (sizeof(PointLight) * 10));
 	//-------------------------------------------------------------------
 	//	Update global buffer for GUI to sync and update amount of Lights
 	//-------------------------------------------------------------------
@@ -405,20 +417,39 @@ void Application::InitializeGUI( Direct3D* direct3D)
 	if(error == 0)
 		std::cout << "TwWindowSize Error" << std::endl;
 
+	float ambientMaterial[4] = { m_lightAmbient.x, m_lightAmbient.y, m_lightAmbient.z, m_lightAmbient.w };
+
 	m_gui = TwNewBar("Infinity Raytracer");
-	int barSize[2] = {200, 180};
+	int barSize[2] = {200, 300};
 	TwSetParam(m_gui, NULL, "size", TW_PARAM_INT32, 2, barSize);
 	TwAddVarRW(m_gui, "Lights", TW_TYPE_INT32, &m_value, "min=0 max=9" );
 	TwAddVarRW(m_gui, "Reflection", TW_TYPE_INT32, &m_bounceCount, "min=1 max=5" );
 	TwAddVarRW(m_gui, "Speed", TW_TYPE_FLOAT, &lightSpeed, "min=1 max=10 step=0.1" );
-	TwAddButton(m_gui, "Mouse", NULL, NULL, " label='LMB - Rotate' ");
-	TwAddButton(m_gui, "Camera", NULL, NULL, " label='W - Forward' ");
-	TwAddButton(m_gui, "Camera2", NULL, NULL, " label='S - Backward' ");
-	TwAddButton(m_gui, "Camera3", NULL, NULL, " label='A - Left' ");
-	TwAddButton(m_gui, "Camera4", NULL, NULL, " label='D - Right' ");
-	TwAddButton(m_gui, "Camera5", NULL, NULL, " label='Z - Up' ");
-	TwAddButton(m_gui, "Camera6", NULL, NULL, " label='X - Down' ");
+	TwAddVarRW(m_gui, "Move", TW_TYPE_BOOLCPP, &movePointlight, "" );
+	TwAddVarRW(m_gui, "Lights", TW_TYPE_INT32, &m_value, "min=0 max=9" );
 
+	TwAddVarRW(m_gui, "Ambient", TW_TYPE_COLOR3F, &m_lightAmbient, "step=0.1 group='Lighting'");
+ 	
+	TwAddVarRW(m_gui, "Diffuse", TW_TYPE_COLOR3F, &m_lightDiffuse, "step=0.1 group='Lighting'"); 
+
+	TwAddVarRW(m_gui, "Specular X", TW_TYPE_FLOAT, &m_lightSpecular.x, "step=0.1 group='Lighting'");  
+	TwAddVarRW(m_gui, "Specular Y", TW_TYPE_FLOAT, &m_lightSpecular.y, "step=0.1 group='Lighting'");  
+	TwAddVarRW(m_gui, "Specular Z", TW_TYPE_FLOAT, &m_lightSpecular.z, "step=0.1 group='Lighting'");  
+	TwAddVarRW(m_gui, "Specular W", TW_TYPE_FLOAT, &m_lightSpecular.w, "step=0.1 group='Lighting'"); 
+
+	TwAddVarRW(m_gui, "Intensity", TW_TYPE_FLOAT, &m_lightAttenuation.x, "step=0.1 group='Lighting'");
+	TwAddVarRW(m_gui, "Decay", TW_TYPE_FLOAT, &m_lightAttenuation.y, "step=0.1 group='Lighting'");
+	TwAddVarRW(m_gui, "Falloff", TW_TYPE_FLOAT, &m_lightAttenuation.z, "step=0.1 group='Lighting'");
+	TwAddVarRW(m_gui, "Beam", TW_TYPE_FLOAT, &m_lightAttenuation.w, "min=0 max=5 step=0.1 group='Lighting'");
+
+	TwAddButton(m_gui, "Mouse", NULL, NULL, " label='LMB - Rotate'  group='Help' ");
+	TwAddButton(m_gui, "Camera", NULL, NULL, " label='W - Forward'  group='Help' ");
+	TwAddButton(m_gui, "Camera2", NULL, NULL, " label='S - Backward' group='Help' ");
+	TwAddButton(m_gui, "Camera3", NULL, NULL, " label='A - Left'    group='Help' ");
+	TwAddButton(m_gui, "Camera4", NULL, NULL, " label='D - Right'   group='Help' ");
+	TwAddButton(m_gui, "Camera5", NULL, NULL, " label='Z - Up'      group='Help' ");
+	TwAddButton(m_gui, "Camera6", NULL, NULL, " label='X - Down'    group='Help' ");
+																	
 }
 
 void Application::RenderGUI() 

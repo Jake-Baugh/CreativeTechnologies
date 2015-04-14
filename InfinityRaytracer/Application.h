@@ -50,13 +50,13 @@ struct Tri
 struct PointLight
 {
 	PointLight(){}
-	PointLight(XMFLOAT4 ppos, XMFLOAT4 pambient, XMFLOAT4 pdiffuse, XMFLOAT4 pspecular, XMFLOAT4 patt)
+	PointLight(XMFLOAT4 pos, XMFLOAT4 amb, XMFLOAT4 dif, XMFLOAT4 spec, XMFLOAT4 att)
 	{
-		position = ppos;
-		ambient	= pambient;
-		diffuse	= pdiffuse;
-		specular = pspecular;
-		attenuation	= patt;
+		position = pos;
+		ambient	= amb;
+		diffuse	= dif;
+		specular = spec;
+		attenuation	= att;
 	}
 
 	XMFLOAT4 position, ambient, diffuse, specular, attenuation;
@@ -162,14 +162,20 @@ private:
 
 	int m_bounceCount;
 	float lightSpeed;
+	
+	bool movePointlight;
+
+	XMFLOAT4 m_lightPosition;
+	XMFLOAT4 m_lightAmbient;
+	XMFLOAT4 m_lightDiffuse;
+	XMFLOAT4 m_lightSpecular;
+	XMFLOAT4 m_lightAttenuation;
 
 	int m_threadsPerGroupX;
 	int m_threadsPerGroupY;
 
 	int m_threadGroupX;
 	int m_threadGroupY;
-
-	bool m_testFlag;
 
 	double m_rayCreationTime, m_intersectionTime, m_colourTime;
 	
